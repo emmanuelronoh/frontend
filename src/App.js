@@ -1,10 +1,10 @@
-import React, { useState, useEffect } from 'react'; // Import useState and useEffect for managing carousel visibility
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import Header from './components/Header';
 import Signup from './components/Signup';
 import Home from './components/Home';
 import Contact from './components/Contact';
-import Login from './components/Login'; // Import the Login component
+import Login from './components/Login';
 import './App.css';
 import Help from './components/Help';
 import Footer from './components/Footer';
@@ -36,13 +36,12 @@ const App = () => {
             {/* Main content area */}
             <div className="app-container">
                 <Routes>
-                    <Route path='/Help' element={<Help />} />
+                    <Route path='/help' element={<Help />} />
                     <Route path='/contact' element={<Contact />} />
-                    <Route path="/home" element={<Home />} />
-                    <Route path="/signup" element={<Signup />} />
-                    <Route path="/login" element={<Login />} />
+                    <Route path='/home' element={<Home />} />
+                    <Route path='/signup' element={<Signup />} />
+                    <Route path='/login' element={<Login />} />
                     <Route path='/blog' element={<Notes />} />
-                    {/* Route for Carousel removed */}
                 </Routes>
                 {/* Conditionally render the Swiper carousel */}
                 {showCarousel && <Carousel />}

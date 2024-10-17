@@ -5,7 +5,7 @@ import './Login.css'; // Import the CSS file for styling
 function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [showPassword, setShowPassword] = useState(false); // State for password visibility
+    const [showPassword, setShowPassword] = useState(false);
     const [showForgotPassword, setShowForgotPassword] = useState(false);
     const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
@@ -25,17 +25,18 @@ function Login() {
                 body: JSON.stringify({ email, password }),
             });
 
-            const data = await response.json();
-            if (response.ok) {
-                // Handle successful login
-                setSuccessMessage(data.message);
-                localStorage.setItem('userId', data.user.id); // Store user ID
-            } else {
-                setErrorMessage(data.error);
+            if (!response.ok) {
+                const errorData = await response.json();
+                setErrorMessage(errorData.error || 'Login failed');
+                return;
             }
+
+            const data = await response.json();
+            setSuccessMessage('Login successful!');
+            localStorage.setItem('userId', data.user.id); // Store the user ID or token as needed
         } catch (error) {
-            console.error('Error during login:', error);
-            setErrorMessage('An error occurred while logging in. Please try again later.');
+            setErrorMessage('An error occurred. Please try again.');
+            console.error('Login error:', error);
         }
     };
 
@@ -54,17 +55,18 @@ function Login() {
                 body: JSON.stringify({ email: forgotPasswordEmail }),
             });
 
-            const data = await response.json();
-            if (response.ok) {
-                setSuccessMessage(data.message);
-                setForgotPasswordEmail(''); // Clear input
-                setShowForgotPassword(false); // Hide the forgot password form
-            } else {
-                setErrorMessage(data.error);
+            if (!response.ok) {
+                const errorData = await response.json();
+                setErrorMessage(errorData.error || 'Failed to send reset link');
+                return;
             }
+
+            setSuccessMessage('Password reset link sent!');
+            setForgotPasswordEmail(''); // Clear input
+            setShowForgotPassword(false); // Hide the forgot password form
         } catch (error) {
-            console.error('Error during password reset:', error);
-            setErrorMessage('An error occurred while sending the reset link. Please try again later.');
+            setErrorMessage('An error occurred. Please try again.');
+            console.error('Forgot password error:', error);
         }
     };
 
@@ -89,7 +91,7 @@ function Login() {
                             <input
                                 id="password"
                                 name="password"
-                                 // Toggle visibility
+                                // type={showPassword ? 'text' : 'password'} // Toggle visibility
                                 placeholder="Password"
                                 required
                                 value={password}

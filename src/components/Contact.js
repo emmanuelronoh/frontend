@@ -21,13 +21,33 @@ const Contact = () => {
         });
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         console.log('Form Data Submitted:', formData);
-        toast.success('Message sent successfully!');
-        setTimeout(() => {
-            navigate('/');
-        }, 2000);
+
+        try {
+            const response = await fetch('http://localhost:5000/api/contact', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(formData),
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to send message');
+            }
+
+            const data = await response.json();
+            toast.success('Message sent successfully!');
+            console.log('Response:', data);
+            setTimeout(() => {
+                navigate('/');
+            }, 2000);
+        } catch (error) {
+            toast.error('Failed to send message. Please try again.');
+            console.error('Error:', error);
+        }
     };
 
     return (

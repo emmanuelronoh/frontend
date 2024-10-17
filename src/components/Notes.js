@@ -8,7 +8,6 @@ const Notes = () => {
         title: '',
         content: '',
         tags: '',
-        date: new Date().toISOString().split('T')[0], // Default date format
     });
 
     const [searchQuery, setSearchQuery] = useState('');
@@ -19,13 +18,24 @@ const Notes = () => {
     const [showNotes, setShowNotes] = useState(false);
     const [showEditor, setShowEditor] = useState(false);
 
-    // Fetch notes from the backend when the component mounts
     useEffect(() => {
-        fetch('http://localhost:5000/notes') 
-            .then(response => response.json())
-            .then(data => setNotes(data))
-            .catch(error => console.error('Error fetching notes:', error));
+        const fetchNotes = async () => {
+            try {
+                const response = await fetch('http://localhost:5000/api/notes', {
+                    method: 'GET',
+                    credentials: 'include', // Include cookies in the request
+                });
+                if (!response.ok) throw new Error('Failed to fetch notes');
+                const data = await response.json();
+                setNotes(data);
+            } catch (error) {
+                console.error('Error fetching notes:', error);
+                alert('Failed to load notes. Please try again later.');
+            }
+        };
+        fetchNotes();
     }, []);
+
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -42,42 +52,36 @@ const Notes = () => {
     const handleSubmit = async (e) => {
         e.preventDefault();
         try {
+            const noteToSubmit = {
+                ...newNote,
+                tags: newNote.tags.split(',').map(tag => tag.trim()),
+            };
+
+            let response;
             if (editMode) {
-                const updatedNote = {
-                    ...newNote,
-                    tags: newNote.tags.split(','),
-                    date: newNote.date,
-                };
-                const response = await fetch(`http://localhost:5000/notes/${noteIdToEdit}`, {
-                    method: 'PUT',
+                response = await fetch(`http://localhost:5000/api/notes/${noteIdToEdit}`, {
+                    method: 'PUT', // Use PUT for updates
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(updatedNote),
+                    body: JSON.stringify(noteToSubmit),
                 });
-                if (!response.ok) {
-                    throw new Error('Failed to update note');
-                }
-                setNotes(notes.map(note =>
-                    note.id === noteIdToEdit ? { ...note, ...newNote, tags: newNote.tags.split(','), date: newNote.date } : note
-                ));
-                setEditMode(false);
-                setNoteIdToEdit(null);
+                if (!response.ok) throw new Error('Failed to update note');
+                const updatedNote = await response.json();
+                setNotes(notes.map(note => (note.id === noteIdToEdit ? updatedNote : note)));
             } else {
-                const noteToAdd = {
-                    ...newNote,
-                    tags: newNote.tags.split(','),
-                };
-                const response = await fetch('http://localhost:5000/notes', {
+                response = await fetch('http://localhost:5000/api/notes', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(noteToAdd),
+                    body: JSON.stringify(noteToSubmit),
                 });
-                if (!response.ok) {
-                    throw new Error('Failed to add new note');
-                }
+                if (!response.ok) throw new Error('Failed to add new note');
                 const newNoteFromResponse = await response.json();
                 setNotes([...notes, newNoteFromResponse]);
             }
-            setNewNote({ title: '', content: '', tags: '', date: new Date().toISOString().split('T')[0] });
+
+            // Reset form
+            setNewNote({ title: '', content: '', tags: '' });
+            setEditMode(false);
+            setNoteIdToEdit(null);
             setShowForm(false);
         } catch (error) {
             console.error('Error:', error);
@@ -86,12 +90,11 @@ const Notes = () => {
     };
 
     const handleEdit = (noteId) => {
-        const noteToEdit = notes.find((note) => note.id === noteId);
+        const noteToEdit = notes.find(note => note.id === noteId);
         setNewNote({
             title: noteToEdit.title,
             content: noteToEdit.content,
-            tags: noteToEdit.tags.join(','),
-            date: noteToEdit.date,
+            tags: noteToEdit.tags.join(', '), // Join tags for editing
         });
         setEditMode(true);
         setNoteIdToEdit(noteId);
@@ -100,23 +103,21 @@ const Notes = () => {
 
     const handleDelete = async (noteId) => {
         try {
-            const response = await fetch(`http://localhost:5000/notes/${noteId}`, {
+            const response = await fetch(`http://localhost:5000/api/notes/${noteId}`, {
                 method: 'DELETE',
             });
-            if (!response.ok) {
-                throw new Error('Failed to delete note');
-            }
-            setNotes(notes.filter((note) => note.id !== noteId));
+            if (!response.ok) throw new Error('Failed to delete note');
+            setNotes(notes.filter(note => note.id !== noteId));
         } catch (error) {
             console.error('Error:', error);
             alert('Failed to delete the note. Please try again.');
         }
     };
 
-    const filteredNotes = notes.filter((note) =>
+    const filteredNotes = notes.filter(note =>
         note.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         note.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        note.tags.join(' ').toLowerCase().includes(searchQuery.toLowerCase())
+        (note.tags && note.tags.join(' ').toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
     return (
@@ -148,12 +149,12 @@ const Notes = () => {
             )}
             {showNotes && (
                 <div className="blog-posts">
-                    {filteredNotes.map((note) => (
+                    {filteredNotes.map(note => (
                         <div key={note.id} className="blog-post">
                             <h2>{note.title}</h2>
                             <p>{note.content}</p>
-                            <p><strong>Tags:</strong> {note.tags.join(', ')}</p>
-                            <p><strong>Date:</strong> {new Date(note.date).toLocaleDateString()}</p>
+                            <p><strong>Tags:</strong> {note.tags ? note.tags.join(', ') : 'No Tags'}</p>
+                            <p><strong>Date:</strong> {new Date(note.date_created).toLocaleDateString()}</p>
                             <button className="edit" onClick={() => handleEdit(note.id)}>Edit</button>
                             <button className="delete" onClick={() => handleDelete(note.id)}>Delete</button>
                         </div>
@@ -189,15 +190,6 @@ const Notes = () => {
                             name="tags"
                             value={newNote.tags}
                             onChange={handleChange}
-                        />
-                        <label htmlFor="date">Date:</label>
-                        <input
-                            type="date"
-                            id="date"
-                            name="date"
-                            value={newNote.date}
-                            onChange={handleChange}
-                            required
                         />
                         <button type="submit">{editMode ? 'Update Note' : 'Add Note'}</button>
                     </form>
